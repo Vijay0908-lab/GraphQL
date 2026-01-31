@@ -1,11 +1,12 @@
 const express = require("express");
 const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
-const feedRoutes = require("./routes/feed");
-const authRoutes = require("./routes/auth");
+const { graphqlHTTP } = require("express-graphql");
 const path = require("path");
 const app = express();
 const multer = require("multer");
+const graphqlSchema = require("./graphql/schema");
+const graphqlResolver = require("./graphql/resolver");
 
 // app.use(bodyParser.urlencoded()); // x-www-form-urlencoded <form>
 
@@ -48,8 +49,14 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use("/feed", feedRoutes);
-app.use("/auth", authRoutes);
+app.use(
+  "/graphql",
+  graphqlHTTP({
+    schema: graphqlSchema,
+    rootValue: graphqlResolver,
+    graphiql: true,
+  }),
+);
 
 app.use((error, req, res, next) => {
   console.log(error);
@@ -63,11 +70,7 @@ mongoose
     "mongodb+srv://Vijay4944:Vijay4944@cluster0.9u1hgcw.mongodb.net/messages?appName=Cluster0",
   )
   .then((result) => {
-    const server = app.listen(8080);
-    const io = require("./socket").init(server);
-    io.on("connection", (socket) => {
-      console.log("client connected");
-    });
+    app.listen(8080);
   })
   .catch((err) => {
     console.log(err);
