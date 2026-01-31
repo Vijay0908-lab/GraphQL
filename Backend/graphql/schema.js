@@ -21,6 +21,13 @@ module.exports = buildSchema(`
     posts : [Post!]!
     }
 
+
+    type AuthData{
+    token : String!
+    userId : String!
+    }
+
+
     input userInputData {
     email : String!
      name : String! 
@@ -28,15 +35,22 @@ module.exports = buildSchema(`
     }
 
 
+    type RootQuery{
+    login(email : String! ,password : String!): AuthData!
+    }
+
+
  type RootMutation {
- createUser(userInput: userInputData):User!
+ createUser(userInput: userInputData): User!
  }
 
   
     schema {
+      query : RootQuery
       mutation : RootMutation 
-
     }
     
     
     `);
+
+//here type is used when data is coming from the server and input is used when data is being sent to the server

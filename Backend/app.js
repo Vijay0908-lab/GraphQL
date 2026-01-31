@@ -7,6 +7,7 @@ const app = express();
 const multer = require("multer");
 const graphqlSchema = require("./graphql/schema");
 const graphqlResolver = require("./graphql/resolver");
+const { error } = require("console");
 
 // app.use(bodyParser.urlencoded()); // x-www-form-urlencoded <form>
 
@@ -46,6 +47,9 @@ app.use((req, res, next) => {
     "OPTIONS, GET, POST, PUT, PATCH, DELETE",
   );
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200);
+  }
   next();
 });
 
@@ -55,6 +59,16 @@ app.use(
     schema: graphqlSchema,
     rootValue: graphqlResolver,
     graphiql: true,
+    customFormatErrorFn(err) {
+      console.log(err);
+      if (!err.originalError) {
+        return err;
+      }
+      const data = err.originalError.data;
+      const message = err.message || "An error occured";
+      const code = err.originalError.code || 500;
+      return { message: message, status: code, data: data };
+    },
   }),
 );
 
@@ -67,7 +81,7 @@ app.use((error, req, res, next) => {
 });
 mongoose
   .connect(
-    "mongodb+srv://Vijay4944:Vijay4944@cluster0.9u1hgcw.mongodb.net/messages?appName=Cluster0",
+    "mongodb+srv://Vijay4944:Vijay4944@cluster0.9u1hgcw.mongodb.net/GraphQl?appName=Cluster0",
   )
   .then((result) => {
     app.listen(8080);
