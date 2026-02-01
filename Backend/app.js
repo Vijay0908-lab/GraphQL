@@ -1,15 +1,17 @@
+const path = require("path");
+
 const express = require("express");
 const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
-const { graphqlHTTP } = require("express-graphql");
-const path = require("path");
-const app = express();
 const multer = require("multer");
-const graphqlSchema = require("./graphql/schema");
-const graphqlResolver = require("./graphql/resolver");
-const { error } = require("console");
+const graphqlHttp = require("express-graphql");
 
-// app.use(bodyParser.urlencoded()); // x-www-form-urlencoded <form>
+const graphqlSchema = require("./graphql/schema");
+const graphqlResolver = require("./graphql/resolvers");
+const auth = require("./middleware/is-auth");
+const { clearImage } = require("./util/file");
+
+const app = express();
 
 const fileStorage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -32,12 +34,11 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
+// app.use(bodyParser.urlencoded()); // x-www-form-urlencoded <form>
 app.use(bodyParser.json()); // application/json
-
 app.use(
   multer({ storage: fileStorage, fileFilter: fileFilter }).single("image"),
 );
-
 app.use("/images", express.static(path.join(__dirname, "images")));
 
 app.use((req, res, next) => {
@@ -53,19 +54,35 @@ app.use((req, res, next) => {
   next();
 });
 
+app.use(auth);
+
+app.put("/post-image", (req, res, next) => {
+  if (!req.isAuth) {
+    throw new Error("Not authenticated!");
+  }
+  if (!req.file) {
+    return res.status(200).json({ message: "No file provided!" });
+  }
+  if (req.body.oldPath) {
+    clearImage(req.body.oldPath);
+  }
+  return res
+    .status(201)
+    .json({ message: "File stored.", filePath: req.file.path });
+});
+
 app.use(
   "/graphql",
-  graphqlHTTP({
+  graphqlHttp({
     schema: graphqlSchema,
     rootValue: graphqlResolver,
     graphiql: true,
-    customFormatErrorFn(err) {
-      console.log(err);
+    formatError(err) {
       if (!err.originalError) {
         return err;
       }
       const data = err.originalError.data;
-      const message = err.message || "An error occured";
+      const message = err.message || "An error occurred.";
       const code = err.originalError.code || 500;
       return { message: message, status: code, data: data };
     },
@@ -79,6 +96,7 @@ app.use((error, req, res, next) => {
   const data = error.data;
   res.status(status).json({ message: message, data: data });
 });
+
 mongoose
   .connect(
     "mongodb+srv://Vijay4944:Vijay4944@cluster0.9u1hgcw.mongodb.net/GraphQl?appName=Cluster0",
@@ -86,6 +104,4 @@ mongoose
   .then((result) => {
     app.listen(8080);
   })
-  .catch((err) => {
-    console.log(err);
-  });
+  .catch((err) => console.log(err));
